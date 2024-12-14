@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../db/db';
+import { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext();
 
@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const sessionUser = sessionStorage.getItem('user');
+    const sessionUser = sessionStorage.getItem("user");
     if (sessionUser) {
       setUser(JSON.parse(sessionUser));
     }
@@ -16,36 +16,57 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (username, password) => {
-    const user = await db.users
-      .where('username').equals(username)
-      .and(u => u.password === password)
-      .first();
-    
-    if (user) {
-      const { password: _, ...safeUser } = user;
-      sessionStorage.setItem('user', JSON.stringify(safeUser));
-      setUser(safeUser);
-      return true;
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          body: JSON.stringify({ username, password }),
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        sessionStorage.setItem("user", JSON.stringify(data?.user));
+        return true;
+      }
+    } catch (error) {
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
-    sessionStorage.removeItem('user');
+    sessionStorage.removeItem("user");
     setUser(null);
   };
 
   const register = async (username, password) => {
-    const exists = await db.users.where('username').equals(username).count();
-    if (exists) return false;
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/register`,
+        {
+          method: "POST",
+          body: JSON.stringify({ username, password }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    await db.users.add({
-      username,
-      password,
-      isAdmin: 0,
-      createdAt: new Date()
-    });
-    return true;
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.error) {
+          return true;
+        }
+        alert(data.message);
+      }
+    } catch (error) {
+      return false;
+    }
   };
 
   return (

@@ -1,61 +1,64 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
-import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { Trash } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useAuth } from "../context/AuthContext";
+import { Navigate } from "react-router-dom";
+import { Loader2, Trash } from "lucide-react";
+import useCart from "../hooks/useCart";
+import { useState } from "react";
+import toast from "react-hot-toast";
 
 export default function Cart() {
+  const [loading, setLoading] = useState(false);
   const { user } = useAuth();
-  
-  const cartItems = useLiveQuery(
-    async () => {
-      if (!user) return [];
-      
-      const items = await db.cart
-        .where('userId')
-        .equals(user.id)
-        .toArray();
-      
-      const itemsWithDetails = await Promise.all(
-        items.map(async (item) => {
-          const product = await db.products.get(item.productId);
-          return { ...item, product };
-        })
-      );
-      
-      return itemsWithDetails;
-    },
-    [user]
-  );
+  const { cartItems, removeFromCart, updateQuantity, clearCart } =
+    useCart(user);
 
   if (!user) {
     return <Navigate to="/login" />;
   }
 
-  const removeFromCart = async (id) => {
+  const total =
+    cartItems?.reduce(
+      (sum, item) => sum + Number(item.product.price) * item.quantity,
+      0
+    ) || 0;
+
+  const handleBuy = async () => {
+    if (loading) return;
+
     try {
-      await db.cart.delete(id);
-      toast.success('Item removed from cart');
+      setLoading(true);
+      const products = cartItems.map((item) => ({
+        id: item.productId,
+        quantity: item.quantity,
+      }));
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/products/buy`,
+        {
+          method: "POST",
+          body: JSON.stringify(products),
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await response.json();
+
+      if (response.ok && !data.error) {
+        clearCart();
+        toast.success("Order placed");
+      } else {
+        toast.error(data.message);
+      }
     } catch (error) {
-      toast.error('Failed to remove item');
+      const errMsg =
+        error.response?.data?.message ||
+        error.response?.message ||
+        error.message;
+      toast.error(errMsg);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const updateQuantity = async (id, quantity) => {
-    if (quantity < 1) return;
-    try {
-      await db.cart.update(id, { quantity });
-      toast.success('Quantity updated');
-    } catch (error) {
-      toast.error('Failed to update quantity');
-    }
-  };
-
-  const total = cartItems?.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
-    0
-  ) || 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -81,9 +84,7 @@ export default function Cart() {
                     <h3 className="text-lg font-semibold text-gray-800">
                       {item.product.name}
                     </h3>
-                    <p className="text-gray-600">
-                      ${item.product.price.toFixed(2)}
-                    </p>
+                    <p className="text-gray-600">${item.product.price}</p>
                   </div>
                 </div>
 
@@ -103,7 +104,7 @@ export default function Cart() {
                       +
                     </button>
                   </div>
-                  
+
                   <button
                     onClick={() => removeFromCart(item.id)}
                     className="text-red-600 hover:text-red-800"
@@ -117,11 +118,26 @@ export default function Cart() {
 
           <div className="bg-gray-50 p-6">
             <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold text-gray-900">Total:</span>
+              <span className="text-lg font-semibold text-gray-900">
+                Total:
+              </span>
               <span className="text-2xl font-bold text-indigo-600">
                 ${total.toFixed(2)}
               </span>
             </div>
+          </div>
+
+          <div className="flex items-center justify-center p-6">
+            <button
+              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md"
+              onClick={handleBuy}
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Buy Now"
+              )}
+            </button>
           </div>
         </div>
       )}
