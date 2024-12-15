@@ -32,7 +32,8 @@ export default function Login() {
           toast.success("Login successful");
           setUsername("");
           setPassword("");
-          navigate("/");
+          const newPath = "http://localhost:5173";
+          location.href = newPath;
         } else {
           toast.error("Invalid credentials");
         }

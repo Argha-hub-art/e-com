@@ -84,7 +84,7 @@ export default function Cart() {
                     <h3 className="text-lg font-semibold text-gray-800">
                       {item.product.name}
                     </h3>
-                    <p className="text-gray-600">${item.product.price}</p>
+                    <p className="text-gray-600">₹{item.product.price}</p>
                   </div>
                 </div>
 
@@ -122,7 +122,7 @@ export default function Cart() {
                 Total:
               </span>
               <span className="text-2xl font-bold text-indigo-600">
-                ${total.toFixed(2)}
+                ₹{total.toFixed(2)}
               </span>
             </div>
           </div>

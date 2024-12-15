@@ -15,7 +15,7 @@ export default function ProductCard({ product }) {
       />
       <div className="p-4">
         <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
-        <p className="text-gray-600 mt-1">${Number(product.price)}</p>
+        <p className="text-gray-600 mt-1">₹{Number(product.price)}</p>
         <p className="text-sm text-gray-500 mt-2">{product.description}</p>
 
         <div className="mt-4 flex justify-between items-center">
